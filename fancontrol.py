@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import subprocess
 import time
 
 from gpiozero import OutputDevice
@@ -13,19 +14,19 @@ GPIO_PIN = 17  # Which GPIO pin you're using to control the fan.
 
 def get_temp():
     """Get the core temperature.
-
-    Read file from /sys to get CPU temp in temp in C *1000
-
+    Run a shell script to get the core temp and parse the output.
+    Raises:
+        RuntimeError: if response cannot be parsed.
     Returns:
-        int: The core temperature in thousanths of degrees Celsius.
+        float: The core temperature in degrees Celsius.
     """
-    with open('/sys/class/thermal/thermal_zone0/temp') as f:
-        temp_str = f.read()
-
+    output = subprocess.run(['vcgencmd', 'measure_temp'], capture_output=True)
+    temp_str = output.stdout.decode()
     try:
-        return int(temp_str) / 1000
-    except (IndexError, ValueError,) as e:
-        raise RuntimeError('Could not parse temperature output.') from e
+        return float(temp_str.split('=')[1].split('\'')[0])
+    except (IndexError, ValueError):
+        raise RuntimeError('Could not parse temperature output.')
+
 
 if __name__ == '__main__':
     # Validate the on and off thresholds
